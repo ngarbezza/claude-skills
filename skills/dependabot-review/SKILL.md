@@ -1,5 +1,6 @@
 ---
 name: dependabot-review
+license: MIT
 description: >
   Workflow completo para revisar, analizar y mergear PRs de dependabot en repositorios GitHub.
   Usá este skill cuando el usuario quiera: listar PRs de dependabot pendientes, revisar updates de dependencias,

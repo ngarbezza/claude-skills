@@ -20,14 +20,13 @@ Cada skill es un directorio dentro de `skills/` con un `SKILL.md` como entrypoin
 
 ## Instalación
 
-Para usar un skill de este catálogo, copiá el directorio del skill a `.claude/skills/` en tu proyecto:
+Usá [skills.sh](https://skills.sh) para instalar cualquier skill de este catálogo en tu proyecto:
 
 ```bash
-# Ejemplo: instalar dependabot-review
-cp -r skills/dependabot-review /tu-proyecto/.claude/skills/
+npx skills add ngarbezza/claude-skills/skills/dependabot-review
 ```
 
-O usá [skills.sh](https://skills.sh) si el skill está publicado ahí.
+El comando copia el skill a `.claude/skills/` en tu proyecto actual y queda disponible como `/dependabot-review` en Claude Code.
 
 ## Convenciones
 
