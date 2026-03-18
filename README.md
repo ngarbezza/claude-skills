@@ -17,6 +17,7 @@ Cada skill es un directorio dentro de `skills/` con un `SKILL.md` como entrypoin
 | Skill | Descripción |
 |-------|-------------|
 | [dependabot-review](skills/dependabot-review/SKILL.md) | Revisa, analiza y mergea PRs de Dependabot con clasificación de riesgo semver |
+| [mutation-testing](skills/mutation-testing/SKILL.md) | Corre mutation testing, analiza mutantes sobrevivientes y sugiere mejoras a los tests |
 
 ## Instalación
 
