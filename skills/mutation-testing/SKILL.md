@@ -43,6 +43,17 @@ ls package.json pom.xml build.gradle Cargo.toml pyproject.toml setup.py Gemfile 
 
 Si no hay herramienta configurada, ir al **Paso 1b** para instalarla.
 
+Si la herramienta no es viable (ver criterios abajo), ir al **Paso 1c** para estrategia manual.
+
+### Cuándo usar estrategia manual en lugar de herramienta automatizada
+
+Considerar mutation testing manual cuando:
+- El entorno no permite instalar dependencias (CI restrictivo, air-gapped, compliance)
+- El proyecto usa un lenguaje/runtime sin herramienta de mutation testing disponible
+- El codebase es muy pequeño y no justifica la configuración de una herramienta
+- Se quiere analizar rápidamente una función/módulo específico sin overhead de setup
+- Los tiempos de ejecución de la suite de tests son prohibitivos para una corrida automatizada completa
+
 ---
 
 ## Paso 1a: Verificar configuración existente
@@ -148,6 +159,75 @@ pip install mutmut
 ```bash
 cargo install cargo-mutants
 ```
+
+---
+
+## Paso 1c: Estrategia manual (sin herramienta automatizada)
+
+La estrategia manual consiste en introducir mutaciones a mano en el código, correr los tests, y revertir el cambio. Es más lenta pero no requiere ninguna herramienta adicional.
+
+### 1. Seleccionar el scope
+
+Acotar a una función o módulo pequeño con lógica relevante. No intentar cubrir todo el codebase manualmente.
+
+```bash
+# Identificar archivos con más lógica de negocio (heurística: muchas condiciones)
+grep -rn "if\|else\|switch\|while\|for\|&&\|||" src/ --include="*.ts" -l
+```
+
+### 2. Identificar puntos de mutación
+
+Leer el código e identificar las expresiones mutables de mayor riesgo:
+
+| Elemento a mutar | Mutación típica | Ejemplo |
+|------------------|----------------|---------|
+| Operador relacional | `>` ↔ `>=`, `<` ↔ `<=`, `==` ↔ `!=` | `if (age > 18)` → `if (age >= 18)` |
+| Operador lógico | `&&` ↔ `\|\|` | `if (a && b)` → `if (a \|\| b)` |
+| Operador aritmético | `+` ↔ `-`, `*` ↔ `/` | `total + fee` → `total - fee` |
+| Valor de retorno | cambiar valor devuelto | `return true` → `return false` |
+| Condición completa | eliminar o negar | `if (isValid)` → `if (!isValid)` o eliminar el bloque |
+| Llamada a método | eliminar la llamada (void) | `logger.audit(e)` → *(línea eliminada)* |
+| Constante | cambiar valor | `MAX_RETRIES = 3` → `MAX_RETRIES = 0` |
+
+### 3. Aplicar mutaciones una por una
+
+Para cada punto de mutación identificado:
+
+1. **Aplicar** el cambio en el archivo
+2. **Correr** la suite de tests (o el subconjunto relevante)
+3. **Registrar** el resultado: ¿algún test falló?
+4. **Revertir** el cambio antes de pasar al siguiente
+
+```bash
+# Ejemplo: correr solo los tests del módulo bajo análisis
+npm test -- --testPathPattern="PaymentService"
+# o
+pytest tests/test_payment_service.py
+# o
+./gradlew test --tests "com.miapp.PaymentServiceTest"
+```
+
+> ⚠️ Siempre revertir antes de aplicar la siguiente mutación. Usar `git diff` para verificar que el archivo volvió al estado original.
+
+### 4. Registrar resultados manualmente
+
+Llevar un registro simple de cada mutación aplicada:
+
+```
+| Archivo | Línea | Mutación aplicada | ¿Tests fallaron? | Observación |
+|---------|-------|-------------------|-----------------|-------------|
+| PaymentService.ts | 45 | `amount > 0` → `amount >= 0` | NO ⚠️ | Falta test para amount=0 |
+| PaymentService.ts | 67 | `return false` → `return true` | SÍ ✅ | |
+| PaymentService.ts | 89 | eliminé llamada a audit() | NO ⚠️ | Efecto secundario no verificado |
+```
+
+### 5. Calcular mutation score aproximado
+
+```
+score = tests_que_fallaron / total_mutaciones_aplicadas * 100
+```
+
+Con 5-10 mutaciones bien elegidas en el código crítico ya se obtiene una señal útil.
 
 ---
 
@@ -336,6 +416,9 @@ El usuario ya tiene resultados y quiere entender qué mejorar. Ejecutar Pasos 3 
 
 ### Modo "mejorar score"
 El usuario quiere subir el mutation score. Ejecutar Paso 4 en detalle, generar tests concretos del Paso 5, re-correr para verificar mejora.
+
+### Modo "manual"
+No es viable usar herramienta automatizada. Ejecutar Paso 1c: seleccionar una función crítica, identificar 5-10 puntos de mutación, aplicarlos uno a uno, registrar resultados y calcular score aproximado. Priorizar mutaciones en lógica de negocio y boundary conditions.
 
 ### Modo "integrar en CI"
 El usuario quiere que mutation testing falle el pipeline si el score baja. Mostrar configuración de umbral de la herramienta correspondiente y el comando de CI.
